@@ -37,7 +37,7 @@ DEVSNetworkTest >> simulation: model [
 ]
 
 { #category : 'tests' }
-DEVSNetworkTest >> testRoundtrip [ 
+DEVSNetworkTest >> testRoundtrip [
 	| simulation received payload |
 	simulation := self simulation: self echoNetwork.
 	(simulation / #host1 / #server1)
@@ -49,5 +49,19 @@ DEVSNetworkTest >> testRoundtrip [
 	simulation
 		runTo: 10.
 	self assert: received.
-	self assert: payload equals: #foo 
+	self assert: payload equals: #foo
+]
+
+{ #category : 'tests' }
+DEVSNetworkTest >> testRunToCalledTwiceRaisesInitTimeAssertion [
+	"Reproduces the 'schrittweise Fortsetzung' gap: DEVSRootSolver>>prepareToStart always
+	resends #receiveMsgInitTime: to the model, even on a simulation that has already advanced.
+	A second #runTo: call on the same, already-progressed simulation violates the
+	DEVSAtomicComponent>>receiveMsgInitTime: invariant (timeNext >= time) instead of
+	resuming the simulation. See PharoDEVS doc.md, section 'Praxis-Erkenntnis: DEVSRootSolver
+	unterstützt keine schrittweise Fortsetzung'."
+	| simulation |
+	simulation := self simulation: self echoNetwork.
+	simulation runTo: 10.
+	self should: [ simulation runTo: 20 ] raise: Error
 ]
