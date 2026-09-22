@@ -5,12 +5,26 @@ Class {
 	#name : 'DEVSPluggableServer',
 	#superclass : 'DEVSServer',
 	#instVars : [
-		'block'
+		'block',
+		'heartbeat',
+		'heartbeatBlock',
+		'nextHeartbeat'
 	],
 	#category : 'DEVS-Models-network',
 	#package : 'DEVS-Models',
 	#tag : 'network'
 }
+
+{ #category : 'accessing' }
+DEVSPluggableServer >> every: ticks do: aBlock [
+	"Have this server do something of its own every ticks, on top of answering
+	what arrives. Without it a server only ever reacts, so a protocol whose second
+	round builds on what the first one learned cannot be run at all: everything
+	stirred up before the simulation starts happens at time zero, in lock step."
+	heartbeat := ticks.
+	heartbeatBlock := aBlock.
+	nextHeartbeat := ticks
+]
 
 { #category : 'modeling' }
 DEVSPluggableServer >> externalTransition [ 
@@ -19,8 +33,12 @@ DEVSPluggableServer >> externalTransition [
 ]
 
 { #category : 'modeling' }
-DEVSPluggableServer >> internalTransition [ 
-	messages ifEmpty: [ 
+DEVSPluggableServer >> internalTransition [
+	"timeLast still holds the previous transition; the one happening now is timeNext."
+	(heartbeatBlock notNil and: [ timeNext >= nextHeartbeat ]) ifTrue: [
+		nextHeartbeat := nextHeartbeat + heartbeat.
+		heartbeatBlock cull: self ].
+	messages ifEmpty: [
 		state := #idle ]
 ]
 
@@ -48,4 +66,14 @@ DEVSPluggableServer >> outputFunction [
 				self 
 					poke: message
 					to: #out ] ]
+]
+
+{ #category : 'modeling' }
+DEVSPluggableServer >> timeAdvance [
+	"The earlier of the two reasons to wake up: a message waiting to go out, or
+	the next heartbeat."
+	| byMessages |
+	byMessages := messages ifNotEmpty: [ 1 ] ifEmpty: [ self infinityTime ].
+	heartbeatBlock ifNil: [ ^ byMessages ].
+	^ byMessages min: ((nextHeartbeat - timeLast) max: 0)
 ]
