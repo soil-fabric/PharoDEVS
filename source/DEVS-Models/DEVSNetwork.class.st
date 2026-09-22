@@ -44,3 +44,18 @@ DEVSNetwork >> initialize [
 	router := DEVSNetworkRouter new name: #router.
 	self addComponent: router.
 ]
+
+{ #category : 'accessing' }
+DEVSNetwork >> router [
+	^ router
+]
+
+{ #category : 'accessing' }
+DEVSNetwork >> router: aRouter [
+	"Put a different router in place of the default one. Components are keyed by
+	name, so re-adding under #router replaces it. Do this before adding hosts:
+	addHost: couples every host to whatever router is in place at that moment."
+	router := aRouter name: #router.
+	self addComponent: router.
+	^ router
+]
