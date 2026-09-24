@@ -53,15 +53,19 @@ DEVSNetworkTest >> testRoundtrip [
 ]
 
 { #category : 'tests' }
-DEVSNetworkTest >> testRunToCalledTwiceRaisesInitTimeAssertion [
-	"Reproduces the 'schrittweise Fortsetzung' gap: DEVSRootSolver>>prepareToStart always
-	resends #receiveMsgInitTime: to the model, even on a simulation that has already advanced.
-	A second #runTo: call on the same, already-progressed simulation violates the
-	DEVSAtomicComponent>>receiveMsgInitTime: invariant (timeNext >= time) instead of
-	resuming the simulation. See PharoDEVS doc.md, section 'Praxis-Erkenntnis: DEVSRootSolver
-	unterstützt keine schrittweise Fortsetzung'."
+DEVSNetworkTest >> testRunToCalledTwiceContinuesTheRun [
+	"Was the reproduction of the gap and is now its proof. DEVSRootSolver>>prepareToStart
+	used to resend #receiveMsgInitTime: on every #runTo:, so a second call on an
+	already advanced model was a second start rather than a continuation - it failed
+	the assertion that timeNext lies ahead, or ran and delivered nothing because
+	savedTimeAdvance still held what the model was doing at the last transition.
+
+	See PharoDEVS doc.md, 'Praxis-Erkenntnis: DEVSRootSolver unterstuetzt keine
+	schrittweise Fortsetzung'."
+
 	| simulation |
 	simulation := self simulation: self echoNetwork.
 	simulation runTo: 10.
-	self should: [ simulation runTo: 20 ] raise: Error
+	self shouldnt: [ simulation runTo: 20 ] raise: Error.
+	self assert: simulation coordinator time >= 10
 ]
