@@ -14,6 +14,15 @@ DEVSLogger >> addEvent: anEvent [
 	events add: anEvent 
 ]
 
+{ #category : 'accessing' }
+DEVSLogger >> events [
+	"What the run has recorded so far. Read during the run as well as after it - a
+	subscriber called from DEVSSimulation>>emitEvent: finds its own event already in
+	here, because the event is kept before it is announced."
+
+	^ events
+]
+
 { #category : 'initialization' }
 DEVSLogger >> initialize [ 
 	super initialize.

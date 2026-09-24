@@ -4,7 +4,8 @@ Class {
 	#instVars : [
 		'model',
 		'coordinator',
-		'logger'
+		'logger',
+		'announcer'
 	],
 	#category : 'DEVS-Core-Basic',
 	#package : 'DEVS-Core',
@@ -34,11 +35,27 @@ DEVSSimulation >> defaultSimulationTime [
 ]
 
 { #category : 'announcer' }
-DEVSSimulation >> emitEvent: anEvent [ 
-	self logger addEvent: (
-		anEvent
-			time: coordinator time;
-			yourself)
+DEVSSimulation >> announcer [
+	"Who is listening to what the simulation does. Built on demand, so a simulation
+	nobody subscribes to carries nothing."
+
+	^ announcer ifNil: [ announcer := Announcer new ]
+]
+
+{ #category : 'announcer' }
+DEVSSimulation >> emitEvent: anEvent [
+	"Stamped, kept, and only then said out loud - so a subscriber sees an event that
+	already carries its time and already stands in the log.
+
+	The announcement is synchronous and happens inside the step that produced it.
+	That is the whole point: what a subscriber does - heal a partition, restart a
+	node, inject a message - takes effect at this moment of the model's time, not
+	after the run. Before this, a scenario could only be built before the run and
+	read after it, and everything in between was a wall-clock wait."
+
+	anEvent time: coordinator time.
+	self logger addEvent: anEvent.
+	self announcer announce: anEvent
 ]
 
 { #category : 'accessing' }
@@ -90,6 +107,20 @@ DEVSSimulation >> runTo: aTime [
 DEVSSimulation >> simulation [ 
 	
 	^ self
+]
+
+{ #category : 'announcer' }
+DEVSSimulation >> when: anEventClass do: aBlock [
+	"Be called when the simulation does that, while it is doing it. The block takes
+	the event - which knows its component and the time of the model - or nothing.
+
+	It does not forward to Announcer>>when:do:, which is not the same message in
+	every Pharo this is built on: it is gone in 13, and where it still exists it is
+	deprecated with a rule that rewrites the calling method. #when:send:to: has not
+	moved across 11 to 14, and #cull: is what lets the block decide whether it wants
+	the event."
+
+	^ self announcer when: anEventClass send: #cull: to: aBlock
 ]
 
 { #category : 'stepping' }
