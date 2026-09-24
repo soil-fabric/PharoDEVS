@@ -81,7 +81,6 @@ DEVSRootSolver >> simulationStep [
 	clock isInfinite ifTrue: [^self].
 	component receiveMsgStarTime: clock. 				"send (*, t) to root DEVS"
 	
-	component logOutgoing.
 	clock := component timeLast.
 
 
