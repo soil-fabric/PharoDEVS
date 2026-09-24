@@ -62,6 +62,5 @@ DEVnDESSRootSolver >> simulationStep [
 	"Discrete step:"
 	tn <= stopTime ifTrue: [ 
 		clock := tn.
-		component receiveMsgStarTime: clock. 				"send (*, t) to root DEVS"
-	component logOutgoing ]
+		component receiveMsgStarTime: clock ]				"send (*, t) to root DEVS"
 ]

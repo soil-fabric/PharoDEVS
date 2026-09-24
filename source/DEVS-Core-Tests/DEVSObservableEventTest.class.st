@@ -36,12 +36,9 @@ DEVSObservableEventTest >> setUp [
 
 { #category : 'tests' }
 DEVSObservableEventTest >> testASubscriberHearsWhatTheSimulationDoes [
-	"The times are compared as a set, because one tick of an atomic root model
-	produces two identical events: DEVSAtomicComponent>>receiveMsgStarTime: ends
-	with #logOutgoing and DEVSRootSolver>>simulationStep sends it again afterwards.
-	That was true of the log long before anybody listened to it - what is under test
-	here is that a subscriber is called at the times of the model, not how many
-	times the model says the same thing."
+	"Once per tick, not twice. The solver used to log the root's outgoing on top of
+	what the root had already logged itself, so a subscriber was called twice for one
+	transition - which for a scenario that acts on an event is not a matter of taste."
 
 	| heard |
 	heard := OrderedCollection new.
@@ -49,9 +46,7 @@ DEVSObservableEventTest >> testASubscriberHearsWhatTheSimulationDoes [
 		when: DEVSInternalTransitionEvent
 		do: [ :event | heard add: event time ].
 	self runTo: 35.
-	self
-		assert: (heard asSet asSortedCollection asArray first: 3)
-		equals: #( 10 20 30 )
+	self assert: (heard first: 3) asArray equals: #( 10 20 30 )
 ]
 
 { #category : 'tests' }

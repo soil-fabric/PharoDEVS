@@ -253,6 +253,10 @@ DEVSCoupledComponent >> receiveMsgStarTime: t [
 	output := Dictionary new.
 	outputPorts do: [ :p | p inLines do: [ :pi |
 		(yy keys includes: pi) ifTrue: [ output at: p put: (yy at: pi) ]]].
+	"Like the atomic one, and for the same reason: whoever produced output says so.
+	This used to be the root solver's job, which worked for a coupled root and logged
+	an atomic one twice - the atomic component had already said it itself."
+	self logOutgoing.
 
 	^ output
 
