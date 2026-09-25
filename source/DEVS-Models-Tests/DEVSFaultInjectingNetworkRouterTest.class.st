@@ -125,6 +125,31 @@ DEVSFaultInjectingNetworkRouterTest >> testNoLatencyMessageArrivesAtBaselineTick
 ]
 
 { #category : 'as yet unclassified' }
+DEVSFaultInjectingNetworkRouterTest >> testAOneWayPartitionCutsOnlyThatWay [
+	"The case a symmetric cut cannot show: A hears B perfectly well and everything A
+	sends falls on the floor. From where A stands nothing looks wrong."
+
+	router simulateNetworkPartitionFrom: 'A' to: 'B'.
+	serverA send: 'intoTheVoid' to: 'B' port: 1.
+	serverB send: 'arrivesFine' to: 'A' port: 1.
+	self runFor: 10.
+	self assert: receivedAtB isEmpty.
+	self assert: receivedAtA asArray equals: #( 'arrivesFine' )
+]
+
+{ #category : 'as yet unclassified' }
+DEVSFaultInjectingNetworkRouterTest >> testHealingOneWayLeavesTheOtherCut [
+	"That the two directions really are separate entries and not one fact stored
+	twice - healing the one that was never cut must not open the one that was."
+
+	router simulateNetworkPartitionFrom: 'A' to: 'B'.
+	router healPartitionFrom: 'B' to: 'A'.
+	self assert: (router isPartitionedFrom: 'A' to: 'B').
+	router healPartitionFrom: 'A' to: 'B'.
+	self deny: (router isPartitionedFrom: 'A' to: 'B')
+]
+
+{ #category : 'as yet unclassified' }
 DEVSFaultInjectingNetworkRouterTest >> testPartitionDropsMessages [
 	router simulateNetworkPartition: 'A' and: 'B'.
 	serverA send: 'shouldBeDropped' to: 'B' port: 1.
@@ -134,6 +159,9 @@ DEVSFaultInjectingNetworkRouterTest >> testPartitionDropsMessages [
 
 { #category : 'as yet unclassified' }
 DEVSFaultInjectingNetworkRouterTest >> testPartitionIsSymmetric [
+	"#simulateNetworkPartition:and: cuts both ways, which is the ordinary case -
+	one way alone is #simulateNetworkPartitionFrom:to:."
+
 	router simulateNetworkPartition: 'A' and: 'B'.
 	serverB send: 'shouldAlsoBeDropped' to: 'A' port: 1.
 	self runFor: 10.

@@ -35,8 +35,16 @@ DEVSFaultInjectingNetworkRouter >> externalTransition [
 
 { #category : 'as yet unclassified' }
 DEVSFaultInjectingNetworkRouter >> healPartition: addr1 and: addr2 [
-	partitions remove: (Array with: addr1 with: addr2) ifAbsent: [ ].
-	partitions remove: (Array with: addr2 with: addr1) ifAbsent: [ ]
+	"Both directions again, because #simulateNetworkPartition:and: cut both."
+
+	self healPartitionFrom: addr1 to: addr2.
+	self healPartitionFrom: addr2 to: addr1
+]
+
+{ #category : 'as yet unclassified' }
+DEVSFaultInjectingNetworkRouter >> healPartitionFrom: sourceAddress to: destinationAddress [
+
+	partitions remove: (Array with: sourceAddress with: destinationAddress) ifAbsent: [  ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -99,6 +107,27 @@ DEVSFaultInjectingNetworkRouter >> shouldDropMessage: aMessage [
 
 { #category : 'as yet unclassified' }
 DEVSFaultInjectingNetworkRouter >> simulateNetworkPartition: addr1 and: addr2 [
-	partitions add: (Array with: addr1 with: addr2).
-	partitions add: (Array with: addr2 with: addr1)
+	"The ordinary case, both directions at once. For one direction alone see
+	#simulateNetworkPartitionFrom:to:."
+
+	self simulateNetworkPartitionFrom: addr1 to: addr2.
+	self simulateNetworkPartitionFrom: addr2 to: addr1
+]
+
+{ #category : 'as yet unclassified' }
+DEVSFaultInjectingNetworkRouter >> simulateNetworkPartitionFrom: sourceAddress to: destinationAddress [
+	"One direction only: nothing gets from the source to the destination, while
+	everything the other way still arrives.
+
+	The mechanism could always do this - #partitions holds ordered pairs and
+	#isPartitionedFrom:to: asks directionally - only the two ways of setting it up
+	both cut both directions, so it was there and unreachable.
+
+	Worth having because an asymmetric partition is the case where a node thinks
+	itself healthy while others have given up on it: it keeps hearing them, so
+	nothing looks wrong from where it stands, and it keeps sending into a void. A
+	failure detector that is only ever shown symmetric cuts is never shown its
+	hardest case."
+
+	partitions add: (Array with: sourceAddress with: destinationAddress)
 ]
