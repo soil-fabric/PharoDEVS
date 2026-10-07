@@ -154,7 +154,10 @@ DEVSRootSolverRT >> simulationStep [
 	every wake-up, it never came.
 
 	What was sent is logged by the component that sent it, as in DEVSRootSolver; the
-	solver no longer adds a record of its own after every step, transition or not."
+	solver no longer adds a record of its own after every step, transition or not.
+	The same holds for what came in: the root logs its input in #receiveMsgX:time:,
+	atomic or coupled. The solver logged it here as well, which for an atomic root
+	was a second copy of what the component had just written down."
 
 	| msg aSubModel inputOccured input |
 
@@ -177,8 +180,7 @@ DEVSRootSolverRT >> simulationStep [
 	[ (aSubModel := seQueue nextOrNil) == nil ] whileFalse: [ 
 		aSubModel sendMsgSETime: clock ].
 	inputOccured ifTrue: [
-		component receiveMsgX: input time: clock.	 "... put input & update event lists"
-		component logIncoming ].
+		component receiveMsgX: input time: clock ].	 "... put input & update event lists"
 
 	"Discrete step, if one is due now - also after an input, which may have moved it."
 	((component timeNext - clock) closeTo: 0) 

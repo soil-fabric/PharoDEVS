@@ -287,8 +287,10 @@ DEVSCoupledComponent >> receiveMsgX: x time: t [
 		eventList add: { c timeNext. c. }.
 		timeNext := timeNext min: (c timeNext) ].
 
-
-
+	"Like the atomic one, and like #logOutgoing in #receiveMsgStarTime:: whoever received
+	the input says so. This used to be the real-time root solver's job, which worked for
+	a coupled root and logged an atomic one twice."
+	self logIncoming
 ]
 
 { #category : 'modeling' }

@@ -14,6 +14,30 @@ Class {
 }
 
 { #category : 'running' }
+DEVSRootSolverRTTest >> componentsLoggingInputWhenInjectingInto: aRoot [
+	"One input, injected before the run and taken in the step at 1. Answers who wrote
+	it down, once per record."
+
+	| simulation |
+	solver := DEVSRootSolverRT new.
+	simulation := DEVSSimulation new.
+	simulation model: aRoot.
+	simulation coordinator: solver.
+	solver
+		component: aRoot;
+		rtFactor: 10;
+		reset;
+		stopTime: 1.
+
+	solver inject: #ping to: #in.
+	self runInBackground.
+
+	^ (simulation logger events select: [ :each |
+		   each isKindOf: DEVSExternalTransitionEvent ]) collect: [ :each |
+		  each component name ]
+]
+
+{ #category : 'running' }
 DEVSRootSolverRTTest >> continuousRootWithTicker [
 	"A continuous root with one ticker, due at 1, 2, 3 ... Answers the root."
 
@@ -149,6 +173,53 @@ DEVSRootSolverRTTest >> testAnInputDoesNotPostponeADueEvent [
 				 each time ]) asArray
 		equals: #( 1 ).
 	self assert: ticker timeLast equals: 1
+]
+
+{ #category : 'tests' }
+DEVSRootSolverRTTest >> testAnInputToACoupledRootIsWrittenDownOnceByEachReceiver [
+	"The root and the component it passes the input on to each say once that it came in.
+	The root's record used to be the solver's; now the root writes it itself."
+
+	| net ticker names |
+	ticker := DEVSTickingAtomic new
+		          name: #ticker;
+		          interval: 1;
+		          yourself.
+	ticker addInputPortNamed: #in.
+	net := DEVSCoupledComponent new
+		       name: #net;
+		       yourself.
+	net addInputPortNamed: #in.
+	net addComponent: ticker.
+	net
+		connectComponentNamed: #self
+		port: #in
+		toComponentNamed: #ticker
+		port: #in
+		ifFail: [ self fail: 'Could not couple the input' ].
+
+	names := self componentsLoggingInputWhenInjectingInto: net.
+
+	self assert: names asBag size equals: 2.
+	self assert: (names asBag occurrencesOf: #net) equals: 1.
+	self assert: (names asBag occurrencesOf: #ticker) equals: 1
+]
+
+{ #category : 'tests' }
+DEVSRootSolverRTTest >> testAnInputToAnAtomicRootIsWrittenDownOnce [
+	"It was twice: the atomic component logged the input at the end of #receiveMsgX:time:
+	and the solver logged it again straight after."
+
+	| ticker |
+	ticker := DEVSTickingAtomic new
+		          name: #ticker;
+		          interval: 1;
+		          yourself.
+	ticker addInputPortNamed: #in.
+
+	self
+		assert: (self componentsLoggingInputWhenInjectingInto: ticker) asArray
+		equals: #( #ticker )
 ]
 
 { #category : 'tests' }

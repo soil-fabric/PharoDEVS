@@ -19,6 +19,11 @@ DEVSTickingAtomic >> interval: anInteger [
 ]
 
 { #category : 'modeling' }
+DEVSTickingAtomic >> externalTransition [
+	"Input changes nothing - the ticker keeps its interval, counted from the input."
+]
+
+{ #category : 'modeling' }
 DEVSTickingAtomic >> internalTransition [
 ]
 
