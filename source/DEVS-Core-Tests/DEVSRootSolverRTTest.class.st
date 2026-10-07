@@ -97,6 +97,19 @@ DEVSRootSolverRTTest >> testAContinuousRunInTheBackgroundMakesTheEventAtItsStopT
 ]
 
 { #category : 'tests' }
+DEVSRootSolverRTTest >> testAContinuousRunStopsItsClockAtTheStopTime [
+	"The numeric step was bounded by the next event only, so the last one before the stop
+	time went a step size past it - to about 2.51 for a stop time of 2.5 - and the model
+	was integrated over time the run was not asked for."
+
+	self continuousRootWithTicker.
+	solver stopTime: 2.5.
+	self runInBackground.
+
+	self assert: solver time equals: 2.5
+]
+
+{ #category : 'tests' }
 DEVSRootSolverRTTest >> testAContinuousRunToItsStopTimeEnds [
 	"#simulate: ran while clock <= stopTime, so after the tick at 2 it came round once
 	more, found the next tick at 3 and failed the assertion clock = tn."
