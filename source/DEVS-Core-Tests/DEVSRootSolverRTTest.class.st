@@ -71,3 +71,38 @@ DEVSRootSolverRTTest >> testAnInputDoesNotPostponeADueEvent [
 		equals: #( 1 ).
 	self assert: ticker timeLast equals: 1
 ]
+
+{ #category : 'tests' }
+DEVSRootSolverRTTest >> testTheContinuousRootSaysOnceWhatItSent [
+	"The continuous variant had its own discrete step, which logged the root's output
+	once more after the root had logged it itself. The ticker is due at 1 and 2; the run
+	stops between grid points, at 2.5, so the clock runs past the stop time and the run ends."
+
+	| net ticker simulation |
+	ticker := DEVSTickingAtomic new
+		          name: #ticker;
+		          interval: 1;
+		          yourself.
+	net := DEVSCoupledDESS new
+		       name: #net;
+		       yourself.
+	net addComponent: ticker.
+	solver := DEVnDESSRootSolverRT new.
+	simulation := DEVSSimulation new.
+	simulation model: net.
+	simulation coordinator: solver.
+	solver
+		component: net;
+		rtFactor: 10;
+		reset;
+		stopTime: 2.5.
+
+	self runInBackground.
+
+	self
+		assert: ((simulation logger events select: [ :each |
+				   (each isKindOf: DEVSInternalTransitionEvent) and: [
+					   each component == net ] ]) collect: [ :each | each time ])
+				asArray
+		equals: #( 1 2 )
+]

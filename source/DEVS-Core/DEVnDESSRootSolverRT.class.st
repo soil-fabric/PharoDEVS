@@ -57,7 +57,10 @@ DEVnDESSRootSolverRT >> receiveMsgSETime: tnc [
 
 { #category : 'as yet unclassified' }
 DEVnDESSRootSolverRT >> simulationStep [
-	"Probably full of bugs."
+	"Probably full of bugs.
+
+	What was sent is logged by the component that sent it, as in DEVSRootSolverRT;
+	the discrete step no longer adds a second record of the root's output."
 
 	| inputOccured input msg  aSubModel interruptTime |
 
@@ -88,7 +91,6 @@ DEVnDESSRootSolverRT >> simulationStep [
 
 	"Discrete step:"
 	tn <= stopTime ifTrue: [ 
-		component receiveMsgStarTime: clock. 				"send (*, t) to root DEVS"
-	 component logOutgoing  ].
+		component receiveMsgStarTime: clock ].				"send (*, t) to root DEVS"
 
 ]
