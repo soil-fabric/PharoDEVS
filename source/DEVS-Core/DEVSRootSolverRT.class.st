@@ -123,14 +123,20 @@ DEVSRootSolverRT >> rtFactor: f [
 
 { #category : 'realtime simulation' }
 DEVSRootSolverRT >> simulate: t [
-	"Performs the simulation. For simulation in background use start/stop instead."
+	"Performs the simulation. For simulation in background use start/stop instead.
+
+	Runs while clock < stopTime, like #start (DEVSBasicSolver>>processBody). It was
+	clock <= stopTime, which leaves a step that brought the clock exactly to the stop
+	time one more round. The discrete solver let real time push the clock past it;
+	DEVnDESSRootSolverRT moves its clock only by a step, and at the stop time there is
+	none left to make."
 
 	startTime := Time millisecondClockValue.
 	stopTime := t.	"in seconds"
 	clock := self realTime min: component timeNext.		"isn't this redundant ???"
 	self prepareToStart.
 	startStopSemaphore initSignals.	"running simulation indication"
-	[ clock <= stopTime ] whileTrue: [ self simulationStep ].
+	[ clock < stopTime ] whileTrue: [ self simulationStep ].
 	startStopSemaphore signal.
 	self prepareToStop.
 
