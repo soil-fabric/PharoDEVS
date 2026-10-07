@@ -32,9 +32,14 @@ DEVnDESSRootSolverRT >> initialize [
 
 { #category : 'as yet unclassified' }
 DEVnDESSRootSolverRT >> numericStep [
-	"a pure copy of the same method from non-RT  DEVnDESSRootSolver"
+	"Copied from the non-RT DEVnDESSRootSolver, with one difference: a step ends at the
+	stop time as it ends at the next event. Bounded by the event only, the last step of
+	a run went up to h past the stop time and integrated the model over time the run
+	was not asked for; the clock stood there when the run ended."
 
-	clock + h < tn ifTrue: [ dh := h ] ifFalse: [ dh := tn - clock ].
+	| limit |
+	limit := tn min: stopTime.
+	clock + h < limit ifTrue: [ dh := h ] ifFalse: [ dh := limit - clock ].
 	seDetected := false.
 	component receiveNMsgStarTime: clock step: dh.		"send (*, t, h) to root DEVS"
 	component receiveNMsgX: {} time: clock step: dh.		"send (x, t, h) to root DEVS"
