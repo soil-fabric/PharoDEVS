@@ -1,73 +1,65 @@
 "
-Waiting for real time value. How to use:
+Waiting for a real time value, and being woken up before it. How to use:
 
-	| t aTime |
-	aTime := Time millisecondClockValue + 10000.
-	t := Timer at: aTime.
+	| t |
+	t := DEVSTimer at: Time millisecondClockValue + 10000.
 	t wait.
 
 	""waiting can be stopped by t unschedule""
 
+This used to be a Delay that scheduled itself through Delay's class variables (TimerEventLoop, AccessProtect, ActiveDelay, SuspendedDelays). They are gone since Delay got its scheduler, so the real-time solvers could not make a single step. A semaphore with a timeout does the same with public protocol only.
 
-
-
+An #unschedule that comes before #wait is not lost: the wait returns at once. That is what the real-time solver needs when an input is injected while it is still busy with the previous step.
 "
 Class {
 	#name : 'DEVSTimer',
-	#superclass : 'Delay',
+	#superclass : 'Object',
+	#instVars : [
+		'semaphore',
+		'resumptionTime'
+	],
 	#category : 'DEVS-Core-RT',
 	#package : 'DEVS-Core',
 	#tag : 'RT'
 }
 
-{ #category : 'as yet unclassified' }
+{ #category : 'instance creation' }
 DEVSTimer class >> at: time [
+	"time is a value of Time millisecondClockValue. SmallInteger maxVal means never."
 
-	^ (self new setDelay: 0 forSemaphore: Semaphore new) scheduleResumptionTime: time
+	^ self new setResumptionTime: time
 ]
 
-{ #category : 'as yet unclassified' }
-DEVSTimer >> scheduleEventResumptionTime: t [
-	"Schedule this delay"
-	resumptionTime := t.
-	AccessProtect critical:[
-		ScheduledDelay := self.
-		TimingSemaphore signal.
-	].
+{ #category : 'initialization' }
+DEVSTimer >> initialize [
+
+	super initialize.
+	semaphore := Semaphore new
 ]
 
-{ #category : 'as yet unclassified' }
-DEVSTimer >> scheduleResumptionTime: t [
+{ #category : 'accessing' }
+DEVSTimer >> resumptionTime [
 
-	"This code is taken from Delay>>schedule and slightly modified."
-
-	beingWaitedOn ifTrue: [self error: 'This Delay has already been scheduled.'].
-	TimerEventLoop ifNotNil:[^self scheduleEventResumptionTime: t].
-	AccessProtect critical: [
-		beingWaitedOn := true.
-		resumptionTime := t.           "Here is the difference from Delay>>schedule."
-		ActiveDelay == nil
-			ifTrue: [self activate]
-			ifFalse: [
-				resumptionTime < ActiveDelay resumptionTime
-					ifTrue: [
-						SuspendedDelays add: ActiveDelay.
-						self activate]
-					ifFalse: [SuspendedDelays add: self]]].
-
+	^ resumptionTime
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'initialization' }
+DEVSTimer >> setResumptionTime: time [
+
+	resumptionTime := time
+]
+
+{ #category : 'waiting' }
 DEVSTimer >> unschedule [
 
-	super unschedule.
-	delaySemaphore signal.
-
+	semaphore signal
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'waiting' }
 DEVSTimer >> wait [
 
-	delaySemaphore wait.
-
+	| remaining |
+	resumptionTime >= SmallInteger maxVal ifTrue: [ ^ semaphore wait ].
+	remaining := resumptionTime - Time millisecondClockValue.
+	remaining > 0 ifTrue: [ semaphore waitTimeoutMilliseconds: remaining ]
 ]
