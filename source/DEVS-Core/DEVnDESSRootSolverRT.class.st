@@ -13,6 +13,15 @@ Class {
 }
 
 { #category : 'as yet unclassified' }
+DEVnDESSRootSolverRT >> discreteStep [
+	"After an input the event may lie ahead now; then there is nothing to do yet."
+
+	self assert: [ clock <= tn ].
+	(clock = tn) & (tn <= stopTime) ifTrue: [ 
+		component receiveMsgStarTime: clock ]				"send (*, t) to root DEVS"
+]
+
+{ #category : 'as yet unclassified' }
 DEVnDESSRootSolverRT >> initialize [
 	"a pure copy of the same method form non-RT  DEVnDESSRootSolver"
 
@@ -60,11 +69,32 @@ DEVnDESSRootSolverRT >> simulationStep [
 	"Probably full of bugs.
 
 	What was sent is logged by the component that sent it, as in DEVSRootSolverRT;
-	the discrete step no longer adds a second record of the root's output."
+	the discrete step no longer adds a second record of the root's output.
 
-	| inputOccured input msg  aSubModel interruptTime |
+	A numeric step that brings the clock to the next event is followed by that event
+	in the same step, after a second wait and a second look at the interrupts - the
+	order of DEVSRootSolverRT. These used to be two steps, and the run loop could end
+	the run between them: with the event exactly at the stop time, #start stopped
+	without it, and #simulate: made it and then asserted clock = tn against the one
+	after it."
 
 	rtFactor = 0 ifTrue: [ ^ self nonRTStep ].
+
+	self synchronizeAndAcceptInterrupts.
+	tn := component timeNext.
+	(clock < tn) & (clock < stopTime) ifFalse: [ ^ self discreteStep ].
+
+	self numericStep.	"Note: We do not consider numeric input."
+	clock = component timeNext ifFalse: [ ^ self ].
+	self synchronizeAndAcceptInterrupts.
+	tn := component timeNext.	"an input at this moment may have moved it"
+	self discreteStep
+]
+
+{ #category : 'as yet unclassified' }
+DEVnDESSRootSolverRT >> synchronizeAndAcceptInterrupts [
+
+	| inputOccured input msg aSubModel interruptTime |
 
 	"Synchronize clock with real time"
 	rtTimer := DEVSTimer at: ((startTime + ((clock min: stopTime) / rtFactor * 1000)) min: SmallInteger maxVal) rounded.
@@ -81,16 +111,5 @@ DEVnDESSRootSolverRT >> simulationStep [
 			aSubModel sendMsgSETime: interruptTime ].
 	inputOccured  ifTrue: [
 			component receiveMsgX: input time: interruptTime.	 "... put input & update event lists"
-			component logIncoming ].
-
-	"Numeric step:"
-	tn := component timeNext. 
-	(clock < tn) & (clock < stopTime) ifTrue: [ ^ self numericStep ].	"Note: We do not consider numeric input."
-
-	self assert: [ clock = tn ].
-
-	"Discrete step:"
-	tn <= stopTime ifTrue: [ 
-		component receiveMsgStarTime: clock ].				"send (*, t) to root DEVS"
-
+			component logIncoming ]
 ]
