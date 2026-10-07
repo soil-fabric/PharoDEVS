@@ -73,12 +73,24 @@ DEVSRootSolverRT >> nonRTStep [
 
 { #category : 'realtime simulation' }
 DEVSRootSolverRT >> prepareToStart [
+	"The pacing is set up on every start, because real time goes on while the solver is
+	stopped. The model is initialised once, in DEVSRootSolver>>prepareToStart.
+
+	This used to send #receiveMsgInitTime: on every start as well. In real time that did
+	no harm: the clock stays finite, and #receiveMsgSyncTime: at stop followed by Init at
+	the same clock gives every component back its timeLast and timeNext. Without real time
+	- rtFactor 0, or #doSteps: - the solver steps like DEVSRootSolver, and like it puts
+	the clock to infinity once nothing is planned. Init at that clock computed an idle
+	component's timeLast as infinity minus infinity, and the next run failed the assertion
+	that timeNext lies ahead - the gap #runTo: had until 2026-09-25.
+
+	What a component resumes in #prepareToStart is therefore resumed once, as with
+	DEVSRootSolver; #receiveMsgSyncTime: still suspends it at every stop."
 
 	rtFactor = 0 
 		ifFalse: [ startTime := Time millisecondClockValue - (clock / rtFactor * 1000) ]
 		ifTrue: [ startTime := Time millisecondClockValue - (clock  * 1000) ].
-	component receiveMsgInitTime: clock.
-
+	super prepareToStart
 ]
 
 { #category : 'realtime simulation' }
@@ -111,14 +123,20 @@ DEVSRootSolverRT >> rtFactor: f [
 
 { #category : 'realtime simulation' }
 DEVSRootSolverRT >> simulate: t [
-	"Performs the simulation. For simulation in background use start/stop instead."
+	"Performs the simulation. For simulation in background use start/stop instead.
+
+	Runs while clock < stopTime, like #start (DEVSBasicSolver>>processBody). It was
+	clock <= stopTime, which leaves a step that brought the clock exactly to the stop
+	time one more round. The discrete solver let real time push the clock past it;
+	DEVnDESSRootSolverRT moves its clock only by a step, and at the stop time there is
+	none left to make."
 
 	startTime := Time millisecondClockValue.
 	stopTime := t.	"in seconds"
 	clock := self realTime min: component timeNext.		"isn't this redundant ???"
 	self prepareToStart.
 	startStopSemaphore initSignals.	"running simulation indication"
-	[ clock <= stopTime ] whileTrue: [ self simulationStep ].
+	[ clock < stopTime ] whileTrue: [ self simulationStep ].
 	startStopSemaphore signal.
 	self prepareToStop.
 
