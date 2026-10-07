@@ -36,6 +36,34 @@ DEVSRootSolverRTTest >> tearDown [
 ]
 
 { #category : 'tests' }
+DEVSRootSolverRTTest >> testARunWithoutRealTimeCanBeContinued [
+	"With rtFactor 0 the solver steps like DEVSRootSolver, and the clock goes to infinity
+	once nothing is planned. A second run sent #receiveMsgInitTime: at that clock, the idle
+	component's timeLast became infinity minus infinity, and the assertion that timeNext
+	lies ahead failed. DEVSNetworkTest>>testRunToCalledTwiceContinuesTheRun is the same
+	case for DEVSRootSolver."
+
+	| idle net simulation |
+	idle := DEVSTickingAtomic new
+		        name: #idle;
+		        interval: Float infinity;
+		        yourself.
+	net := DEVSCoupledComponent new
+		       name: #net;
+		       yourself.
+	net addComponent: idle.
+	solver := DEVSRootSolverRT new.
+	solver rtFactor: 0.
+	simulation := DEVSSimulation new.
+	simulation model: net.
+	simulation coordinator: solver.
+
+	simulation runTo: 10.
+	self shouldnt: [ simulation runTo: 20 ] raise: Error.
+	self deny: idle timeLast isNaN
+]
+
+{ #category : 'tests' }
 DEVSRootSolverRTTest >> testAnInputDoesNotPostponeADueEvent [
 	"The ticker is due at 1, and the run stops at 1. The input is waiting when the solver
 	wakes up for the tick, so both belong to the same step. Before, that step took the
