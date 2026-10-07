@@ -129,8 +129,16 @@ DEVSRootSolverRT >> simulate: t [
 
 { #category : 'realtime simulation' }
 DEVSRootSolverRT >> simulationStep [
+	"First accept interrupts, then make the discrete step - the order DEVnDESSRootSolverRT
+	already had. This used to be either-or: a step that found input in the queue made
+	the external transition and skipped the event planned for the same moment. When the
+	run ended at that moment, the event was gone for this run; with input arriving at
+	every wake-up, it never came.
 
-	| msg aSubModel duration inputOccured input |
+	What was sent is logged by the component that sent it, as in DEVSRootSolver; the
+	solver no longer adds a record of its own after every step, transition or not."
+
+	| msg aSubModel inputOccured input |
 
 	rtFactor = 0 ifTrue: [ ^ self nonRTStep ].
 
@@ -140,26 +148,23 @@ DEVSRootSolverRT >> simulationStep [
 	
 	startStopSemaphore isSignaled ifTrue: [^self].	"No step, return immediately."
 
-	"Step"
-	"TO DO: make it more consistent with other solvers - first accept interrupts, then make discrete step."
-	clock := self realTime min: component timeNext. 
-	duration := Time millisecondsToRun: [
-		inputOccured := false.
-		input := Dictionary new.
-		[ (msg := inputQueue nextOrNil) == nil ] whileFalse: [ 
-			input at: (component inputPortNamed: msg first) put: msg second.
-			inputOccured := true ].
-		[ (aSubModel := seQueue nextOrNil) == nil ] whileFalse: [ 
-			aSubModel sendMsgSETime: clock ].
-		inputOccured
-		   ifTrue: [
-			component receiveMsgX: input time: clock.	 "... put input & update event lists"
-			component logIncoming ]
-		   ifFalse: [
-			((component timeNext - clock) closeTo: 0) 
-				ifTrue: [ component receiveMsgStarTime: clock ] "The planned event takes place."	
-				ifFalse: []].	 
-		component logOutgoing ]
+	clock := self realTime min: component timeNext.
+
+	"Accept interrupts"
+	inputOccured := false.
+	input := Dictionary new.
+	[ (msg := inputQueue nextOrNil) == nil ] whileFalse: [ 
+		input at: (component inputPortNamed: msg first) put: msg second.
+		inputOccured := true ].
+	[ (aSubModel := seQueue nextOrNil) == nil ] whileFalse: [ 
+		aSubModel sendMsgSETime: clock ].
+	inputOccured ifTrue: [
+		component receiveMsgX: input time: clock.	 "... put input & update event lists"
+		component logIncoming ].
+
+	"Discrete step, if one is due now - also after an input, which may have moved it."
+	((component timeNext - clock) closeTo: 0) 
+		ifTrue: [ component receiveMsgStarTime: clock ]
 
 ]
 
