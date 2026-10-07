@@ -77,8 +77,7 @@ DEVnDESSRootSolverRT >> simulationStep [
 	[ (aSubModel := seQueue nextOrNil) == nil ] whileFalse: [ 
 			aSubModel sendMsgSETime: interruptTime ].
 	inputOccured  ifTrue: [
-			component receiveMsgX: input time: interruptTime.	 "... put input & update event lists"
-			component logIncoming ].
+			component receiveMsgX: input time: interruptTime ].	 "... put input & update event lists; the root logs it"
 
 	"Numeric step:"
 	tn := component timeNext. 
