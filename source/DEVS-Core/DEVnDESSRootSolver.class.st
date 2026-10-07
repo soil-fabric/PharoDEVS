@@ -22,8 +22,13 @@ DEVnDESSRootSolver >> initialize [
 
 { #category : 'simulation' }
 DEVnDESSRootSolver >> numericStep [
+	"A step ends at the stop time as it ends at the next event. Bounded by the event only,
+	the last step of a run went up to h past the stop time and integrated the model over
+	time the run was not asked for; the clock stood there when the run ended."
 
-	clock + h < tn ifTrue: [ dh := h ] ifFalse: [ dh := tn - clock ].
+	| limit |
+	limit := tn min: stopTime.
+	clock + h < limit ifTrue: [ dh := h ] ifFalse: [ dh := limit - clock ].
 	seDetected := false.
 	component receiveNMsgStarTime: clock step: dh.		"send (*, t, h) to root DEVS"
 	component receiveNMsgX: {} time: clock step: dh.		"send (x, t, h) to root DEVS"
@@ -54,10 +59,16 @@ DEVnDESSRootSolver >> receiveMsgSETime: tnc [
 
 { #category : 'simulation' }
 DEVnDESSRootSolver >> simulationStep [
+	"A numeric step that brings the clock to the next event is followed by that event in
+	the same step. These used to be two steps, and #simulate: could end the run between
+	them: with the event exactly at the stop time, the run ended without it."
 
 	"Numeric step:"
 	tn := component timeNext. 
-	(clock < tn) & (clock < stopTime) ifTrue: [ ^ self numericStep ].
+	(clock < tn) & (clock < stopTime) ifTrue: [
+		self numericStep.
+		tn := component timeNext.	"a state event may have moved it"
+		clock = tn ifFalse: [ ^ self ] ].
 
 	"Discrete step:"
 	tn <= stopTime ifTrue: [ 
